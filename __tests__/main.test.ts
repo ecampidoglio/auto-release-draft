@@ -1,20 +1,29 @@
-import {wait} from '../src/wait'
-import * as process from 'process'
+import * as core from '@actions/core'
+import {run} from '../src/main'
 
-test('throws invalid number', async () => {
-  const input = parseInt('foo', 10)
-  await expect(wait(input)).rejects.toThrow('milliseconds not a number')
+jest.mock('@actions/core')
+
+describe('When running the action', () => {
+  const fakeSetOutput = core.setOutput as jest.MockedFunction<typeof core.setOutput>
+
+  test('it should set the release-url output parameter', async () => {
+    await run()
+    expect(fakeSetOutput).toHaveBeenCalledWith('release-url', expect.anything())
+  })
 })
 
-test('wait 500 ms', async () => {
-  const start = new Date()
-  await wait(500)
-  const end = new Date()
-  var delta = Math.abs(end.getTime() - start.getTime())
-  expect(delta).toBeGreaterThan(450)
-})
+describe('When the action fails', () => {
+  const fakeSetOutput = core.setOutput as jest.MockedFunction<typeof core.setOutput>
+  const fakeSetFailed = core.setFailed as jest.MockedFunction<typeof core.setFailed>
 
-// shows how the runner will run a javascript action with env / stdout protocol
-test('test runs', () => {
-  process.env['INPUT_MILLISECONDS'] = '500'
+  beforeAll(() => {
+    fakeSetOutput.mockImplementation(() => {
+      throw new Error('Failed to set the output parameter')
+    })
+  })
+
+  test('it should set the action status as failed with the error message', async () => {
+    await run()
+    expect(fakeSetFailed).toHaveBeenCalledWith('Failed to set the output parameter')
+  })
 })
