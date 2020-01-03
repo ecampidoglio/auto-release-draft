@@ -4,6 +4,7 @@ import {run} from '../src/main'
 
 jest.mock('@actions/core')
 jest.mock('../src/event')
+jest.mock('../src/git')
 
 describe('When running the action', () => {
   const fakeGetCreatedTag = event.getCreatedTag as jest.MockedFunction<typeof event.getCreatedTag>
