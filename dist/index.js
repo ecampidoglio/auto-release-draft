@@ -3587,15 +3587,18 @@ const core = __importStar(__webpack_require__(470));
 const event = __importStar(__webpack_require__(363));
 const version = __importStar(__webpack_require__(775));
 const git = __importStar(__webpack_require__(136));
+const github = __importStar(__webpack_require__(824));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const token = core.getInput('repo-token');
             const tag = event.getCreatedTag();
+            var releaseUrl = '';
             if (tag && version.isSemVer(tag)) {
                 const changelog = yield git.getChangesIntroducedByTag(tag);
-                core.debug(`Detected changelog:\n${changelog}`);
+                releaseUrl = yield github.createReleaseDraft(tag, token, changelog);
             }
-            core.setOutput('release-url', 'https://example.com');
+            core.setOutput('release-url', releaseUrl);
         }
         catch (error) {
             core.setFailed(error.message);
@@ -8958,6 +8961,23 @@ module.exports = {"activity":{"checkStarringRepo":{"method":"GET","params":{"own
 
 /***/ }),
 
+/***/ 716:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function toUnorderedList(text) {
+    return text
+        .split('\n')
+        .map(line => (line ? `- ${line}` : ''))
+        .join('\n');
+}
+exports.toUnorderedList = toUnorderedList;
+
+
+/***/ }),
+
 /***/ 742:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -9558,6 +9578,56 @@ function isexe (path, options, cb) {
 function sync (path, options) {
   return checkStat(fs.statSync(path), path, options)
 }
+
+
+/***/ }),
+
+/***/ 824:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const core = __importStar(__webpack_require__(470));
+const github = __importStar(__webpack_require__(469));
+const version = __importStar(__webpack_require__(775));
+const markdown = __importStar(__webpack_require__(716));
+function createReleaseDraft(versionTag, repoToken, changeLog) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const octokit = new github.GitHub(repoToken);
+        const response = yield octokit.repos.createRelease({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            tag_name: versionTag,
+            name: version.removePrefix(versionTag),
+            body: markdown.toUnorderedList(changeLog),
+            prerelease: version.isPrerelease(versionTag),
+            draft: true
+        });
+        if (response.status != 201) {
+            throw new Error(`Failed to create the release: ${response.status}`);
+        }
+        core.info(`Created release draft ${response.data.name}`);
+        return response.data.html_url;
+    });
+}
+exports.createReleaseDraft = createReleaseDraft;
 
 
 /***/ }),
